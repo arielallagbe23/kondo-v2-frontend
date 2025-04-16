@@ -2,21 +2,33 @@
 
 Voici quelques captures liées au projet :
 
-![Capture 11](WEBDEVPIC/Sans titre 11.png)
-![Capture 12](WEBDEVPIC/Sans titre 12.png)
-![Capture 13](WEBDEVPIC/Sans titre 13.png)
-![Capture 14](WEBDEVPIC/Sans titre 14.png)
-![Capture 15](WEBDEVPIC/Sans titre 15.png)
-![Capture 16](WEBDEVPIC/Sans titre 16.png)
-![Capture 17](WEBDEVPIC/Sans titre 17.png)
-![Capture 18](WEBDEVPIC/Sans titre 18.png)
-![Capture 19](WEBDEVPIC/Sans titre 19.png)
-![Capture 20](WEBDEVPIC/Sans titre 20.png)
-![Capture 21](WEBDEVPIC/Sans titre 21.png)
-![Capture 22](WEBDEVPIC/Sans titre 22.png)
-![Capture 23](WEBDEVPIC/Sans titre 23.png)
-![Capture 50](WEBDEVPIC/Sans titre 50.png)
-![Capture 51](WEBDEVPIC/Sans titre 51.png)
+<table>
+  <tr>
+    <td><img src="WEBDEVPIC/Sans titre 11.png" width="250"/></td>
+    <td><img src="WEBDEVPIC/Sans titre 12.png" width="250"/></td>
+    <td><img src="WEBDEVPIC/Sans titre 13.png" width="250"/></td>
+  </tr>
+  <tr>
+    <td><img src="WEBDEVPIC/Sans titre 14.png" width="250"/></td>
+    <td><img src="WEBDEVPIC/Sans titre 15.png" width="250"/></td>
+    <td><img src="WEBDEVPIC/Sans titre 16.png" width="250"/></td>
+  </tr>
+  <tr>
+    <td><img src="WEBDEVPIC/Sans titre 17.png" width="250"/></td>
+    <td><img src="WEBDEVPIC/Sans titre 18.png" width="250"/></td>
+    <td><img src="WEBDEVPIC/Sans titre 19.png" width="250"/></td>
+  </tr>
+  <tr>
+    <td><img src="WEBDEVPIC/Sans titre 20.png" width="250"/></td>
+    <td><img src="WEBDEVPIC/Sans titre 21.png" width="250"/></td>
+    <td><img src="WEBDEVPIC/Sans titre 22.png" width="250"/></td>
+  </tr>
+  <tr>
+    <td><img src="WEBDEVPIC/Sans titre 23.png" width="250"/></td>
+    <td><img src="WEBDEVPIC/Sans titre 50.png" width="250"/></td>
+    <td><img src="WEBDEVPIC/Sans titre 51.png" width="250"/></td>
+  </tr>
+</table>
 
 # Getting Started with Create React App
 
