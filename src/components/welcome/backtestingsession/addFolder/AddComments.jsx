@@ -40,7 +40,7 @@ const AddComments = ({ sessionBacktestId, showAlert, setIsBlurred, setRefreshCom
   
 
   return (
-    <div className="relative w-auto h-auto bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded-lg text-2xl flex flex-col mt-4 px-2 py-4">
+    <div className="relative w-auto h-auto bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded-lg text-2xl flex flex-col px-2 py-4">
       <div className="mb-4 text-lg">Message à moi-même</div>
       
       <div className="flex space-x-2">

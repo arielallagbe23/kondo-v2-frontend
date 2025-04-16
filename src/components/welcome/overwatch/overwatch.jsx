@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import OverwatchPieChart from "./OverwatchPiechart";
 import OverwatchRiskAdjusted from "./OverwatchRiskAdjusted";
 import OverwatchExplication from "./OverwatchExplication";
+import OverwatchPerformance from "./OverwatchPerformance";
+import OverwatchRiskManagement from "./OverwatchRiskManagement";
+import TransactionSummary from "../transactionsummary/transactionsummary";
 
 const Overwatch = () => {
   const [userTransactions, setUserTransactions] = useState([]);
@@ -11,6 +14,9 @@ const Overwatch = () => {
   const transactionsPerPage = 5;
   const [startDate, setStartDate] = useState(""); // État pour la date de début
   const [endDate, setEndDate] = useState(""); // État pour la date de fin
+
+  const [rrp1, setRrp1] = useState("");
+  const [rrp2, setRrp2] = useState("");
 
   // ✅ États des filtres
   const [startYear, setStartYear] = useState("");
@@ -125,6 +131,8 @@ const Overwatch = () => {
       "Samedi",
     ][trxDate.getDay()];
 
+    const rrp = parseFloat(trx.rrp);
+
     // Filtrage par année
     const isWithinYearRange =
       (!startYear || trxYear >= parseInt(startYear)) &&
@@ -149,13 +157,20 @@ const Overwatch = () => {
       filters.selectedSessions.length === 0 ||
       filters.selectedSessions.includes(trx.session_backtest_id);
 
+    const matchRrp =
+      (!rrp1 && !rrp2) ||
+      (rrp1 && !rrp2 && rrp >= parseFloat(rrp1)) ||
+      (!rrp1 && rrp2 && rrp <= parseFloat(rrp2)) ||
+      (rrp1 && rrp2 && rrp >= parseFloat(rrp1) && rrp <= parseFloat(rrp2));
+
     return (
       isWithinYearRange &&
       isWithinDateRange && // Assurez-vous que la transaction est dans la plage de dates
       matchHour &&
       matchDay &&
       matchMonth &&
-      matchSession
+      matchSession &&
+      matchRrp
     );
   });
 
@@ -183,7 +198,6 @@ const Overwatch = () => {
 
   return (
     <div className="mr-8 rounded-lg mb-20">
-
       {/* 📌 Filtres */}
       <div className="rounded-lg bg-gray-100 dark:bg-gray-900 py-4 px-2 mb-4">
         <h3 className="text-white font-bold">Filtres</h3>
@@ -318,6 +332,34 @@ const Overwatch = () => {
               className="p-1 border rounded text-xs bg-gray-700 text-white"
             />
           </div>
+
+          <div className="flex space-x-6 mb-2">
+            <div className="flex flex-col">
+              <label className="text-gray-900 dark:text-gray-300 font-extralight text-xs mb-2">
+                rrp 1
+              </label>
+              <input
+                type="number"
+                value={rrp1}
+                onChange={(e) => setRrp1(e.target.value)}
+                className="p-1 border rounded text-xs text-gray-900 dark:text-white font-extralight bg-gray-100 dark:bg-gray-800 mb-2"
+                placeholder="2020"
+              />
+            </div>
+
+            <div className="flex flex-col">
+              <label className="text-gray-900 dark:text-gray-300 font-extralight text-xs mb-2">
+                rrp 2
+              </label>
+              <input
+                type="number"
+                value={rrp2}
+                onChange={(e) => setRrp2(e.target.value)}
+                className="p-1 border rounded text-xs text-gray-900 font-extralight dark:text-white bg-gray-100 dark:bg-gray-800 mb-2"
+                placeholder="2022"
+              />
+            </div>
+          </div>
         </div>
 
         <div className="mt-4 space-y-3">
@@ -328,21 +370,33 @@ const Overwatch = () => {
               <div key={nomActif}>
                 <h5 className="text-gray-300">{nomActif}</h5>
                 <div className="gap-2 mt-2">
-                  {userSessions[nomActif].map((session) => (
-                    <button
-                      key={session.id}
-                      className={`p-2 text-xs rounded-md mr-2 ${
-                        filters.selectedSessions.includes(session.id)
-                          ? "bg-blue-500 text-white"
-                          : "bg-gray-700 text-gray-400"
-                      }`}
-                      onClick={() =>
-                        handleToggle("selectedSessions", session.id)
-                      }
-                    >
-                      {session.titre}
-                    </button>
-                  ))}
+                  {userSessions[nomActif].map((session) => {
+                    const isSelected = filters.selectedSessions.includes(
+                      session.id
+                    );
+                    const decisionColor =
+                      session.decision === "valid"
+                        ? "bg-blue-400 text-blue-900 font-bold"
+                        : session.decision === "invalid"
+                          ? "bg-red-400 text-red-900 font-bold"
+                          : "bg-gray-700 text-gray-400";
+
+                    const combinedClass = isSelected
+                      ? `${decisionColor} ring-2 ring-white`
+                      : decisionColor;
+
+                    return (
+                      <button
+                        key={session.id}
+                        className={`p-2 text-xs rounded-md mr-2 ${combinedClass}`}
+                        onClick={() =>
+                          handleToggle("selectedSessions", session.id)
+                        }
+                      >
+                        {session.titre}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             ))
@@ -354,8 +408,8 @@ const Overwatch = () => {
 
       {/* 📌 Tableau des transactions filtrées */}
       <div className="overflow-x-auto mt-8 rounded-lg  py-4">
-        <h3 className="text-white font-bold mb-4 text-2xl">
-          Transactions Filtrées
+        <h3 className="text-white font-bold mb-4 text-4xl">
+          My Portfolio Metrics
         </h3>
 
         {filteredTransactions.length === 0 ? (
@@ -370,45 +424,68 @@ const Overwatch = () => {
               </div>
             </div>
             <div className="flex space-x-4">
-            <div className="w-[30%] h-auto flex items-center justify-center bg-gray-100 dark:bg-gray-900 mt-4 rounded-lg">
+              <div className="w-[30%] h-auto flex items-center justify-center bg-gray-100 dark:bg-gray-900 mt-4 rounded-lg">
                 <OverwatchPieChart
                   overwatchFilteredTransactions={filteredTransactions}
                 />
               </div>
-              <div className="bg-gray-100 dark:bg-gray-900 py-8 px-2 rounded-lg mt-4 w-[70%]">
+              <div className="bg-gray-100 dark:bg-gray-900 py-4 px-4 rounded-lg mt-4 w-[70%] flex flex-col">
+                <div className="font-bold text-lg mb-4">
+                  🧮 Filtered transactions
+                </div>
                 <table className="w-full text-sm text-left text-gray-400 rounded-lg overflow-hidden">
                   <thead className="text-xs uppercase bg-gray-800 text-gray-300 rounded-t-lg">
                     <tr>
-                      <th className="px-4 py-2">ID</th>
                       <th className="px-4 py-2">Actif</th>
                       <th className="px-4 py-2">Date Entrée</th>
                       <th className="px-4 py-2">Résultat</th>
-                      <th className="px-4 py-2">Risque (%)</th>
                     </tr>
                   </thead>
                   <tbody>
                     {currentTransactions.map((transaction) => (
-                      <tr
-                        key={transaction.id}
-                        className="bg-gray-700 border-b border-gray-600"
-                      >
-                        <td className="px-4 py-2">{transaction.id}</td>
-                        <td className="px-4 py-2">{transaction.nom_actif}</td>
+                      <tr key={transaction.id} className="bg-gray-800">
+                        <td className="px-4 py-4">{transaction.nom_actif}</td>
                         <td className="px-4 py-2">
-                          {transaction.date_entree.toLocaleString("fr-FR")}
+                          {new Intl.DateTimeFormat("fr-FR", {
+                            weekday: "long", // Lundi, Mardi, etc.
+                            day: "2-digit", // 13
+                            month: "long", // Décembre
+                            year: "numeric", // 2023
+                            hour: "2-digit", // 14
+                            minute: "2-digit", // 25
+                            hour12: false, // Format 24h (14h au lieu de 2 PM)
+                          }).format(new Date(transaction.date_entree))}
                         </td>
+
                         <td
-                          className={`px-4 py-2 font-semibold ${
+                          className={`px-4 py-2 font-bold ${
                             transaction.resultat_id === 2
-                              ? "text-red-400"
-                              : "text-green-400"
+                              ? "text-red-500" // SL en rouge
+                              : transaction.resultat_id === 3 ||
+                                  transaction.resultat_id === 4
+                                ? "text-green-500" // TP et SL->TP en vert
+                                : transaction.resultat_id === 1
+                                  ? "text-white" // BE en blanc
+                                  : "text-gray-400" // ND et autres en gris
                           }`}
                         >
-                          {transaction.resultat_id === 2
-                            ? "Perte (SL)"
-                            : "Gain (TP/BE)"}
+                          {(() => {
+                            switch (transaction.resultat_id) {
+                              case 1:
+                                return "Break Eve,";
+                              case 2:
+                                return "Stop Loss";
+                              case 3:
+                                return "Take Profit";
+                              case 4:
+                                return "Stop loss devenu Take Profit";
+                              case 5:
+                                return "ND";
+                              default:
+                                return "Inconnu";
+                            }
+                          })()}
                         </td>
-                        <td className="px-4 py-2">{transaction.risque}%</td>
                       </tr>
                     ))}
                   </tbody>
@@ -456,11 +533,17 @@ const Overwatch = () => {
                   </button>
                 </div>
               </div>
-
             </div>
 
-            <div className="bg-gray-100 dark:bg-gray-900 py-8 px-2 rounded-lg mt-4">
-              <OverwatchExplication />
+            <div className="mt-4 mb-4">
+              <OverwatchPerformance
+                overwatchFilteredTransactions={filteredTransactions}
+              />
+            </div>
+            <div>
+              <OverwatchRiskManagement
+                overwatchFilteredTransactions={filteredTransactions}
+              />
             </div>
           </>
         )}

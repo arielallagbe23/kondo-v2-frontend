@@ -9,12 +9,15 @@ import AddTransaction from "./components/welcome/backtestingsession/AddTransacti
 import BackTestingSession from "./components/welcome/backtestingsession/BackTestingSession";
 import Overwatch from "./components/welcome/overwatch/overwatch";
 import JournalTrading from "./components/welcome/journaltrading/JournalTrading";
+import TransactionSummary from "./components/welcome/transactionsummary/transactionsummary";
+import LandingPage from "./components/Acceuil/LandingPage";
 
 function App() {
   const [isNavbarOpen, setIsNavbarOpen] = useState(false);
 
   return (
     <Router>
+      
       {/* Conteneur principal qui prend toute la hauteur de l'écran */}
       <div className="h-screen flex bg-gray-100 dark:bg-gray-800">
 
@@ -36,6 +39,7 @@ function App() {
             <Route path="/welcomeHome" element={<WelcomePage />} />
             <Route path="/overwatch" element={<Overwatch />} />
             <Route path="/journaltrading" element={<JournalTrading />} />
+            <Route path="/transactionsumary" element={<TransactionSummary />} />
           </Routes>
         </main>
       </div>

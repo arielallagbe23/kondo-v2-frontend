@@ -52,7 +52,7 @@ const AddPhotos = ({ sessionBacktestId, showAlert }) => {
   };
 
   return (
-    <div className="px-2 py-4 bg-white dark:bg-gray-900 rounded-lg mt-4 h-auto w-full">
+    <div className="px-2 py-4 bg-white dark:bg-gray-900 rounded-lg h-auto w-full">
       <div className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Ajouter des images</div>
 
       <input type="file" accept="image/*" multiple onChange={handleImageChange} className="text-gray-900 dark:text-white bg-white dark:bg-gray-900 text-xs font-extralight"/>

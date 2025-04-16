@@ -88,6 +88,8 @@ const Navbar = ({ isNavbarOpen, setIsNavbarOpen }) => {
           <Link to="/home" className="text-lg hover:text-cyan-400" onClick={toggleNavbar}>Accueil</Link>
           <Link to="/overwatch" className="text-lg hover:text-cyan-400" onClick={toggleNavbar}>OverWatch</Link>
           <Link to="/journaltrading" className="text-lg hover:text-cyan-400" onClick={toggleNavbar}>Journal trading</Link>
+          <Link to="/transactionsumary" className="text-lg hover:text-cyan-400" onClick={toggleNavbar}>Transaction Summary</Link>
+
 
 
           

@@ -16,13 +16,21 @@ import TimeMetrics from "./visualisation/TimeMetrics";
 import RiskManagementMetrics from "./visualisation/RiskManagementMetrics";
 import RiskAdjustedProjection from "./visualisation/RiskAdjustedProjection";
 import SecondFilteredBarChart from "./visualisation/SecondFilteredBarChart";
+import UpdateDecision from "./addFolder/UpdateDecision";
 
-const AddTransaction = ({ sessionBacktestId, actifId, capital2 }) => {
+const AddTransaction = ({
+  sessionBacktestId,
+  actifId,
+  capital2,
+  sessionBacktestTitre,
+}) => {
   console.log("📢 Valeur de `capital2` dans AddTransaction :", capital2);
   const [loading, setLoading] = useState(false);
   const [allTransactions, setAllTransactions] = useState([]);
   const [startYear, setStartYear] = useState("");
   const [endYear, setEndYear] = useState("");
+  const [rrp1, setRrp1] = useState("");
+  const [rrp2, setRrp2] = useState("");
   const [isBlurred, setIsBlurred] = useState(false);
   const [isRefreshingTable, setIsRefreshingTable] = useState(false);
   const [isEmptyData, setIsEmptyData] = useState(false);
@@ -35,21 +43,19 @@ const AddTransaction = ({ sessionBacktestId, actifId, capital2 }) => {
       resultat_id: "",
       date_entree: "",
       rrp: "",
-      risque: "0.5",
-      type_ordre_id: "",
-      timeframe_id: "",
     },
   ]);
 
   const [commonFields, setCommonFields] = useState({
     actif_id: actifId,
     strategie_id: "",
+    timeframe_id: "",
+    risque: "0.5", // Valeur par défaut
   });
 
   const [alert, setAlert] = useState({ message: "", type: "" });
   const [options, setOptions] = useState({
     actifs: [],
-    typesOrdres: [],
     timeframes: [],
     resultats: [],
   });
@@ -67,16 +73,14 @@ const AddTransaction = ({ sessionBacktestId, actifId, capital2 }) => {
   useEffect(() => {
     const fetchOptions = async () => {
       try {
-        const [actifs, typesOrdres, timeframes, resultats] = await Promise.all([
+        const [actifs, timeframes, resultats] = await Promise.all([
           axios.get("http://localhost:5001/api/actifs"),
-          axios.get("http://localhost:5001/api/types-ordres"),
           axios.get("http://localhost:5001/api/timeframes"),
           axios.get("http://localhost:5001/api/resultats"),
         ]);
 
         setOptions({
           actifs: actifs.data,
-          typesOrdres: typesOrdres.data,
           timeframes: timeframes.data,
           resultats: resultats.data,
         });
@@ -296,6 +300,8 @@ const AddTransaction = ({ sessionBacktestId, actifId, capital2 }) => {
       "Samedi",
     ][trx.date_entree.getDay()];
 
+    const rrp = parseFloat(trx.rrp);
+
     const isWithinYearRange =
       (!startYear || trxYear >= parseInt(startYear)) &&
       (!endYear || trxYear <= parseInt(endYear));
@@ -306,15 +312,24 @@ const AddTransaction = ({ sessionBacktestId, actifId, capital2 }) => {
     const matchDay =
       filters.selectedDays.length === 0 ||
       filters.selectedDays.includes(trxDay);
-    const matchOrderType =
-      filters.selectedOrderTypes.length === 0 ||
-      filters.selectedOrderTypes.includes(trx.type_ordre_id);
+    const matchOrderType = filters.selectedOrderTypes.length === 0;
     const matchMonth =
       filters.selectedMonths.length === 0 ||
       filters.selectedMonths.includes(trxMonth);
 
+    const matchRrp =
+      (!rrp1 && !rrp2) ||
+      (rrp1 && !rrp2 && rrp >= parseFloat(rrp1)) ||
+      (!rrp1 && rrp2 && rrp <= parseFloat(rrp2)) ||
+      (rrp1 && rrp2 && rrp >= parseFloat(rrp1) && rrp <= parseFloat(rrp2));
+
     return (
-      isWithinYearRange && matchHour && matchDay && matchOrderType && matchMonth
+      isWithinYearRange &&
+      matchHour &&
+      matchDay &&
+      matchOrderType &&
+      matchMonth &&
+      matchRrp
     );
   });
 
@@ -333,15 +348,12 @@ const AddTransaction = ({ sessionBacktestId, actifId, capital2 }) => {
     );
 
   const handleAddRow = () => {
-    setTransactions([
-      ...transactions,
+    setTransactions((prev) => [
+      ...prev,
       {
         resultat_id: "",
         date_entree: "",
         rrp: "",
-        risque: "0.5",
-        type_ordre_id: "",
-        timeframe_id: "",
       },
     ]);
   };
@@ -369,14 +381,16 @@ const AddTransaction = ({ sessionBacktestId, actifId, capital2 }) => {
       return false;
     }
 
+    if (!commonFields.risque || !commonFields.timeframe_id) {
+      console.warn("❌ Champs communs manquants :", commonFields);
+      return false;
+    }
+
     return transactions.every((transaction, index) => {
       const missingFields = [];
       if (!transaction.resultat_id) missingFields.push("resultat_id");
       if (!transaction.date_entree) missingFields.push("date_entree");
       if (!transaction.rrp) missingFields.push("rrp");
-      if (!transaction.risque) missingFields.push("risque");
-      if (!transaction.type_ordre_id) missingFields.push("type_ordre_id");
-      if (!transaction.timeframe_id) missingFields.push("timeframe_id");
 
       if (missingFields.length > 0) {
         console.warn(
@@ -391,7 +405,7 @@ const AddTransaction = ({ sessionBacktestId, actifId, capital2 }) => {
 
   const handleSubmit = async () => {
     console.log("🚀 Début de handleSubmit");
-  
+
     if (!isFormValid()) {
       console.warn("❌ Le formulaire n'est pas valide !");
       showAlert(
@@ -400,49 +414,50 @@ const AddTransaction = ({ sessionBacktestId, actifId, capital2 }) => {
       );
       return;
     }
-  
+
     try {
       setLoading(true);
       setIsBlurred(true);
       setIsRefreshingTable(false);
-  
+
       const token = localStorage.getItem("token"); // 🔥 Vérifier le token
       const user_id = localStorage.getItem("user_id");
       const session_backtest_id = sessionBacktestId;
-  
+
       if (!token || !user_id || !session_backtest_id) {
         console.error("❌ Utilisateur ou session non définis !");
         showAlert("Utilisateur ou session non définis !", "error");
         setLoading(false);
         return;
       }
-  
+
       const actifIdToAdjust = [48, 49, 50, 51];
-  
+
       const requests = transactions.map((transaction) => {
-        const adjustedRRP =
-          actifIdToAdjust.includes(commonFields.actif_id)
-            ? parseFloat(transaction.rrp) * 0.70
-            : transaction.rrp;
-  
+        const adjustedRRP = actifIdToAdjust.includes(commonFields.actif_id)
+          ? parseFloat(transaction.rrp) * 0.7
+          : transaction.rrp;
+
         const formattedDate = new Date(transaction.date_entree)
           .toISOString()
           .slice(0, 19)
           .replace("T", " "); // ✅ Date format MySQL
-  
+
         const transactionData = {
           user_id,
           session_backtest_id,
           actif_id: commonFields.actif_id,
           strategie_id: commonFields.strategie_id,
+          timeframe_id: commonFields.timeframe_id,
+          risque: commonFields.risque,
           ...transaction,
-          date_entree: formattedDate, // ✅ Fix format date
+          date_entree: formattedDate,
           rrp: adjustedRRP,
-          status: "clôturé", // ✅ Forcer en string
+          status: "clôturé",
         };
-  
+
         console.log("📤 Données envoyées :", transactionData);
-  
+
         return axios.post(
           "http://localhost:5001/api/transactions/addTransactions",
           transactionData,
@@ -454,24 +469,29 @@ const AddTransaction = ({ sessionBacktestId, actifId, capital2 }) => {
           }
         );
       });
-  
+
       await Promise.all(requests);
-  
-      showAlert("Toutes les transactions ont été ajoutées avec succès !", "success");
-  
+
+      showAlert(
+        "Toutes les transactions ont été ajoutées avec succès !",
+        "success"
+      );
+
       setTransactions([
         {
           resultat_id: "",
           date_entree: "",
           rrp: "",
-          risque: "0.5",
-          type_ordre_id: "",
-          timeframe_id: "",
         },
       ]);
-  
-      setCommonFields({ actif_id: commonFields.actif_id, strategie_id: "" });
-  
+
+      setCommonFields((prev) => ({
+        actif_id: prev.actif_id,
+        strategie_id: "",
+        risque: prev.risque || "0.5",
+        timeframe_id: prev.timeframe_id || "",
+      }));
+
       setTimeout(() => {
         setIsRefreshingTable(true);
       }, 2000);
@@ -485,7 +505,6 @@ const AddTransaction = ({ sessionBacktestId, actifId, capital2 }) => {
       setLoading(false);
     }
   };
-  
 
   useEffect(() => {
     if (isRefreshingTable) {
@@ -573,48 +592,95 @@ const AddTransaction = ({ sessionBacktestId, actifId, capital2 }) => {
 
   return (
     <div className="flex space-x-4">
-      <div className="flex flex-col space-y-2 w-1/5">
-        <div className="w-full px-2 py-4  bg-white dark:bg-gray-900 rounded-lg shadow-lg text-gray-900 dark:text-white mb-2">
+      <div className="flex flex-col space-y-6 w-1/5">
+        <div className="w-full px-2 py-4 bg-white dark:bg-gray-900 rounded-lg text-gray-700 dark:text-gray-300">
+          {sessionBacktestTitre}
+        </div>
+        <div className="w-full px-2 py-4  bg-white dark:bg-gray-900 rounded-lg shadow-lg text-gray-900 dark:text-white">
           <div className="text-lg mb-4">Ajouter transaction</div>
 
-          <div className="mb-4 flex rounded-lg bg-gray-50 dark:bg-gray-800 space-x-2 p-2">
-            <div className="flex flex-col w-1/2">
-              <label className="text-xs mb-1 font-extralight text-gray-700 dark:text-gray-300">
-                Actif
-              </label>
-              <input
-                type="text"
-                value={
-                  options.actifs.find(
-                    (actif) => actif.id === commonFields.actif_id
-                  )?.nom_actif || "Chargement..."
-                }
-                readOnly
-                className="mb-1 mt-1 text-xs font-extralight w-full p-2 border rounded h-6 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white"
-              />
+          <div className="mb-4 rounded-lg bg-gray-50 dark:bg-gray-800 ">
+            <div className=" flex space-x-2 p-2">
+              <div className="flex flex-col w-1/2">
+                <label className="text-xs mb-1 font-extralight text-gray-700 dark:text-gray-300">
+                  Actif
+                </label>
+                <input
+                  type="text"
+                  value={
+                    options.actifs.find(
+                      (actif) => actif.id === commonFields.actif_id
+                    )?.nom_actif || "Chargement..."
+                  }
+                  readOnly
+                  className="mb-1 mt-1 text-xs font-extralight w-full p-2 border rounded h-6 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div className="flex flex-col w-1/2">
+                <label className="text-xs mb-1 font-extralight text-gray-700 dark:text-gray-300">
+                  Stratégie
+                </label>
+                <select
+                  value={commonFields.strategie_id}
+                  onChange={(e) =>
+                    setCommonFields({
+                      ...commonFields,
+                      strategie_id: e.target.value,
+                    })
+                  }
+                  className="mb-1 mt-1 text-xs w-full p-1 border rounded h-6 bg-white dark:bg-gray-900 text-gray-900 dark:text-white font-extralight"
+                >
+                  <option value="">Sélectionner</option>
+                  {strategies.map((strategie) => (
+                    <option key={strategie.id} value={strategie.id}>
+                      {strategie.nom_strategie}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div className="flex flex-col w-1/2">
-              <label className="text-xs mb-1 font-extralight text-gray-700 dark:text-gray-300">
-                Stratégie
-              </label>
-              <select
-                value={commonFields.strategie_id}
-                onChange={(e) =>
-                  setCommonFields({
-                    ...commonFields,
-                    strategie_id: e.target.value,
-                  })
-                }
-                className="mb-1 mt-1 text-xs font-normal w-full p-1 border rounded h-6 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-              >
-                <option value="">Sélectionner</option>
-                {strategies.map((strategie) => (
-                  <option key={strategie.id} value={strategie.id}>
-                    {strategie.nom_strategie}
-                  </option>
-                ))}
-              </select>
+            <div className=" flex space-x-2 p-2">
+              <div className="flex flex-col w-full mb-2">
+                <label className="text-xs font-extralight text-gray-700 dark:text-gray-300">
+                  Risque
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={commonFields.risque}
+                  onChange={(e) =>
+                    setCommonFields({ ...commonFields, risque: e.target.value })
+                  }
+                  className="text-xs font-extralight w-full p-1 border rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                  placeholder="0.5"
+                />
+              </div>
+
+              <div className="flex flex-col w-full mb-2">
+                <label className="text-xs font-extralight text-gray-700 dark:text-gray-300">
+                  Timeframe
+                </label>
+                <select
+                  value={commonFields.timeframe_id}
+                  onChange={(e) =>
+                    setCommonFields({
+                      ...commonFields,
+                      timeframe_id: e.target.value,
+                    })
+                  }
+                  className="font-extralight text-xs w-full p-1 border rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                >
+                  <option value="">Sélectionner</option>
+                  {options.timeframes.map((timeframe) => (
+                    <option key={timeframe.id} value={timeframe.id}>
+                      {timeframe.timeframe}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
@@ -646,33 +712,7 @@ const AddTransaction = ({ sessionBacktestId, actifId, capital2 }) => {
                 <div className="w-full">
                   {/* Étage 1 */}
                   <div className="w-full flex space-x-2 mb-4">
-                    <div className="w-1/4">
-                      <label className="block text-xs mb-2 font-extralight text-gray-700 dark:text-gray-300">
-                        Risque
-                      </label>
-                      <input
-                        type="text"
-                        value={transaction.risque}
-                        onChange={(e) =>
-                          handleChange(index, "risque", e.target.value)
-                        }
-                        className="text-xs py-1 px-1 w-full border rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-                      />
-                    </div>
-                    <div className="w-1/4">
-                      <label className="block text-xs mb-2 font-extralight text-gray-700 dark:text-gray-300">
-                        RRP
-                      </label>
-                      <input
-                        type="text"
-                        value={transaction.rrp}
-                        onChange={(e) =>
-                          handleChange(index, "rrp", e.target.value)
-                        }
-                        className="text-xs py-1 px-1 w-full border rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-                      />
-                    </div>
-                    <div className="w-1/2">
+                    <div className="w-full">
                       <label className="block text-xs mb-2 font-extralight text-gray-700 dark:text-gray-300">
                         Date Entrée
                       </label>
@@ -689,26 +729,21 @@ const AddTransaction = ({ sessionBacktestId, actifId, capital2 }) => {
 
                   {/* Étage 2 */}
                   <div className="w-full flex space-x-2">
-                    <div className="w-1/3">
+                    <div className="w-1/2">
                       <label className="block text-xs mb-2 font-extralight text-gray-700 dark:text-gray-300">
-                        T.O
+                        RRP
                       </label>
-                      <select
-                        value={transaction.type_ordre_id}
+                      <input
+                        type="text"
+                        value={transaction.rrp}
                         onChange={(e) =>
-                          handleChange(index, "type_ordre_id", e.target.value)
+                          handleChange(index, "rrp", e.target.value)
                         }
-                        className="text-xs w-full p-1 border rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-                      >
-                        <option value="">Sélectionner</option>
-                        {options.typesOrdres.map((type) => (
-                          <option key={type.id} value={type.id}>
-                            {type.type_ordre}
-                          </option>
-                        ))}
-                      </select>
+                        className="text-xs py-1 px-1 w-full border rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                      />
                     </div>
-                    <div className="w-1/3">
+
+                    <div className="w-1/2">
                       <label className="block text-xs mb-2 font-extralight text-gray-700 dark:text-gray-300">
                         Résultat
                       </label>
@@ -723,25 +758,6 @@ const AddTransaction = ({ sessionBacktestId, actifId, capital2 }) => {
                         {options.resultats.map((resultat) => (
                           <option key={resultat.id} value={resultat.id}>
                             {resultat.resultat}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="w-1/3">
-                      <label className="block text-xs mb-2 font-extralight text-gray-700 dark:text-gray-300">
-                        Timeframe
-                      </label>
-                      <select
-                        value={transaction.timeframe_id}
-                        onChange={(e) =>
-                          handleChange(index, "timeframe_id", e.target.value)
-                        }
-                        className="text-xs w-full p-1 border rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-                      >
-                        <option value="">Sélectionner</option>
-                        {options.timeframes.map((timeframe) => (
-                          <option key={timeframe.id} value={timeframe.id}>
-                            {timeframe.timeframe}
                           </option>
                         ))}
                       </select>
@@ -788,6 +804,10 @@ const AddTransaction = ({ sessionBacktestId, actifId, capital2 }) => {
         <div className="bg-gray-900 rounded-lg p-2">
           <DollarValue />
         </div>
+
+        <div className="bg-gray-900 rounded-lg p-2">
+          <UpdateDecision sessionBacktestId={sessionBacktestId} />
+        </div>
       </div>
 
       <div className="w-4/5  flex flex-col h-full space-y-2">
@@ -797,36 +817,72 @@ const AddTransaction = ({ sessionBacktestId, actifId, capital2 }) => {
               <Quote sessionBacktestId={sessionBacktestId} />
             </div>
 
-            <div className="flex flex-col bg-white dark:bg-gray-900 w-auto rounded-lg h-auto px-4">
-              <div className="text-gray-900 dark:text-white text-lg py-2 right-1">
-                Filtrer entre deux années
-              </div>
-
-              <div className="flex space-x-6">
-                <div className="flex flex-col">
-                  <label className="text-gray-900 dark:text-gray-300 font-extralight text-xs mb-2">
-                    Année Début
-                  </label>
-                  <input
-                    type="number"
-                    value={startYear}
-                    onChange={(e) => setStartYear(e.target.value)}
-                    className="p-1 border rounded text-xs text-gray-900 dark:text-white font-extralight bg-gray-100 dark:bg-gray-800 mb-2"
-                    placeholder="2020"
-                  />
+            <div className="flex flex-col space-y-2">
+              <div className="flex flex-col bg-white dark:bg-gray-900 w-auto rounded-lg h-auto px-4">
+                <div className="text-gray-900 dark:text-white text-lg py-2 right-1">
+                  Filtrer entre deux années
                 </div>
 
-                <div className="flex flex-col">
-                  <label className="text-gray-900 dark:text-gray-300 font-extralight text-xs mb-2">
-                    Année Fin
-                  </label>
-                  <input
-                    type="number"
-                    value={endYear}
-                    onChange={(e) => setEndYear(e.target.value)}
-                    className="p-1 border rounded text-xs text-gray-900 font-extralight dark:text-white bg-gray-100 dark:bg-gray-800 mb-2"
-                    placeholder="2022"
-                  />
+                <div className="flex space-x-6 mb-2">
+                  <div className="flex flex-col">
+                    <label className="text-gray-900 dark:text-gray-300 font-extralight text-xs mb-2">
+                      Année Début
+                    </label>
+                    <input
+                      type="number"
+                      value={startYear}
+                      onChange={(e) => setStartYear(e.target.value)}
+                      className="p-1 border rounded text-xs text-gray-900 dark:text-white font-extralight bg-gray-100 dark:bg-gray-800 mb-2"
+                      placeholder="2020"
+                    />
+                  </div>
+
+                  <div className="flex flex-col">
+                    <label className="text-gray-900 dark:text-gray-300 font-extralight text-xs mb-2">
+                      Année Fin
+                    </label>
+                    <input
+                      type="number"
+                      value={endYear}
+                      onChange={(e) => setEndYear(e.target.value)}
+                      className="p-1 border rounded text-xs text-gray-900 font-extralight dark:text-white bg-gray-100 dark:bg-gray-800 mb-2"
+                      placeholder="2022"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col bg-white dark:bg-gray-900 w-auto rounded-lg h-auto px-4">
+                <div className="text-gray-900 dark:text-white text-lg py-2 right-1">
+                  Filtrer rrp
+                </div>
+
+                <div className="flex space-x-6 mb-2">
+                  <div className="flex flex-col">
+                    <label className="text-gray-900 dark:text-gray-300 font-extralight text-xs mb-2">
+                      rrp 1
+                    </label>
+                    <input
+                      type="number"
+                      value={rrp1}
+                      onChange={(e) => setRrp1(e.target.value)}
+                      className="p-1 border rounded text-xs text-gray-900 dark:text-white font-extralight bg-gray-100 dark:bg-gray-800 mb-2"
+                      placeholder="2020"
+                    />
+                  </div>
+
+                  <div className="flex flex-col">
+                    <label className="text-gray-900 dark:text-gray-300 font-extralight text-xs mb-2">
+                      rrp 2
+                    </label>
+                    <input
+                      type="number"
+                      value={rrp2}
+                      onChange={(e) => setRrp2(e.target.value)}
+                      className="p-1 border rounded text-xs text-gray-900 font-extralight dark:text-white bg-gray-100 dark:bg-gray-800 mb-2"
+                      placeholder="2022"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -924,40 +980,6 @@ const AddTransaction = ({ sessionBacktestId, actifId, capital2 }) => {
                 ))}
               </div>
             </div>
-
-            {/* Filtrer par Type d'Ordre */}
-            <div className="">
-              <div
-                className="grid grid-cols-6 gap-2"
-                onMouseDown={() => setIsDragging(true)}
-                onMouseUp={() => setIsDragging(false)}
-                onMouseLeave={() => setIsDragging(false)}
-              >
-                {[
-                  { id: 1, type_ordre: "Buy" },
-                  { id: 2, type_ordre: "Sell" },
-                  { id: 3, type_ordre: "Buy Limit" },
-                  { id: 4, type_ordre: "Sell Limit" },
-                  { id: 5, type_ordre: "Buy Stop" },
-                  { id: 6, type_ordre: "Sell Stop" },
-                ].map((order) => (
-                  <button
-                    key={order.id}
-                    className={`rounded text-center text-sm p-2 cursor-pointer font-light transition-colors ${
-                      filters.selectedOrderTypes.includes(order.id)
-                        ? "bg-blue-500 text-white"
-                        : "bg-white dark:bg-gray-800 text-black dark:text-gray-500"
-                    }`}
-                    onMouseDown={() => handleToggleOrderType(order.id)}
-                    onMouseEnter={() =>
-                      isDragging && handleToggleOrderType(order.id)
-                    }
-                  >
-                    {order.type_ordre}
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
 
@@ -991,17 +1013,27 @@ const AddTransaction = ({ sessionBacktestId, actifId, capital2 }) => {
                   />
                 </div>
               </div>
-              
+
               <div>
-                <SecondFilteredBarChart filteredTransactions={filteredTransactions} />
+                <SecondFilteredBarChart
+                  filteredTransactions={filteredTransactions}
+                />
               </div>
 
               <div className="h-[40%] flex space-x-2 ">
                 {/* 📊 Graphique LineChart bien séparé */}
-                <div className="w-[70%] h-auto">
+                <div className="w-[100%] min-h-[300px] h-auto">
                   <FilteredLineChart
                     filteredTransactions={filteredTransactions}
                     setBenefice={setBenefice}
+                  />
+                </div>
+              </div>
+              <div className="flex space-x-2 h-auto">
+                <div className="w-[70%] h-auto transition-all duration-300 ease-in-out ${isBlurred ? 'blur-md' : ''}">
+                  <FilteredComments
+                    sessionBacktestId={sessionBacktestId}
+                    refreshComments={refreshComments}
                   />
                 </div>
 
@@ -1015,7 +1047,6 @@ const AddTransaction = ({ sessionBacktestId, actifId, capital2 }) => {
                               Actif
                             </th>
                             <th className="p-2">Date d'entrée</th>
-                            <th className="p-2">Type d'ordre</th>
                             <th className="p-2 last:rounded-tr-2xl">Action</th>
                           </tr>
                         </thead>
@@ -1035,11 +1066,7 @@ const AddTransaction = ({ sessionBacktestId, actifId, capital2 }) => {
                               <td className="p-4 text-center">
                                 {transaction.date_entree.toLocaleString()}
                               </td>
-                              <td className="p-4 text-center">
-                                {options.typesOrdres.find(
-                                  (o) => o.id === transaction.type_ordre_id
-                                )?.type_ordre || "N/A"}
-                              </td>
+
                               <td className="p-3 text-center">
                                 {/* 🗑️ Icône de suppression */}
                                 <button
@@ -1104,20 +1131,6 @@ const AddTransaction = ({ sessionBacktestId, actifId, capital2 }) => {
                       </div>
                     )}
                   </div>
-                </div>
-              </div>
-              <div className="flex space-x-2 h-auto">
-                <div className="w-[60%] h-auto transition-all duration-300 ease-in-out ${isBlurred ? 'blur-md' : ''}">
-                  <FilteredComments
-                    sessionBacktestId={sessionBacktestId}
-                    refreshComments={refreshComments}
-                  />
-                </div>
-
-                <div className="w-[40%] h-auto">
-                  <FilteredRadarChart
-                    filteredTransactions={filteredTransactions}
-                  />
                 </div>
               </div>
 

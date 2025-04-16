@@ -5,17 +5,17 @@ import { Pie } from "react-chartjs-2";
 // Enregistrement des éléments nécessaires pour Pie Chart
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-const OverwatchPieChart = ({ overwatchFilteredTransactions }) => {
-  if (!overwatchFilteredTransactions.length) {
+const TransactionsummaryPieChart = ({ transactionSummaryFilteredTransactions }) => {
+  if (!transactionSummaryFilteredTransactions.length) {
     return <p className="text-center text-gray-500">Aucune transaction trouvée.</p>;
   }
 
   // Comptage des types de résultats
   const resultCounts = {
-    BE: overwatchFilteredTransactions.filter((t) => t.resultat_id === 1).length,
-    SL: overwatchFilteredTransactions.filter((t) => t.resultat_id === 2).length,
-    TP: overwatchFilteredTransactions.filter((t) => t.resultat_id === 3).length,
-    SLTP: overwatchFilteredTransactions.filter((t) => t.resultat_id === 4).length,
+    BE: transactionSummaryFilteredTransactions.filter((t) => t.resultat_id === 1).length,
+    SL: transactionSummaryFilteredTransactions.filter((t) => t.resultat_id === 2).length,
+    TP: transactionSummaryFilteredTransactions.filter((t) => t.resultat_id === 3).length,
+    SLTP: transactionSummaryFilteredTransactions.filter((t) => t.resultat_id === 4).length,
   };
 
   // Données pour le Pie Chart
@@ -45,15 +45,12 @@ const OverwatchPieChart = ({ overwatchFilteredTransactions }) => {
   };
 
   return (
-    <div className="w-full rounded-xl h-[400px] flex flex-col  px-4 py-2">
-      <div className="h-[5%] mb-6 text-lg font-bold">
-        📊 Results Distribution
-      </div>
-      <div  className="h-[95%]">
+    <div className="w-full rounded-xl h-[400px] flex flex-col  px-4">
+      <div  className="h-full">
         <Pie data={pieData} options={pieOptions} />
       </div>
     </div>
   );
 };
 
-export default OverwatchPieChart;
+export default TransactionsummaryPieChart;

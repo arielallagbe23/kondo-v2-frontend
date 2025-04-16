@@ -11,7 +11,6 @@ import {
   Legend,
 } from "chart.js";
 
-// 🔹 Enregistrement des modules pour Chart.js
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -29,17 +28,17 @@ const RiskAdjustedProjection = ({ filteredTransactions, capitalInitial }) => {
     );
   }
 
-  let beneficeTotalPourcentage = 0;
   let beneficeTotalPourcentage2 = 0;
-  let risqueActuel = 0.5 / 100; // 🔹 Départ à 0.5%
   let risqueActuel2 = 0.5 / 100;
 
+  let beneficeTotalPourcentage2_5 = 0;
+  let risqueActuel2_5 = 0.5 / 100;
 
-  let historiqueBenefice = [{ date: "Début", benefice: 0 }];
   let historiqueBenefice2 = [{ date: "Début", benefice: 0 }];
+  let historiqueBenefice2_5 = [{ date: "Début", benefice: 0 }];
+
   let filteredLineData = [{ date: "Début", benefice: 0 }];
 
-  // 🔹 Trier les transactions par `date_entree`
   const sortedTransactions = [...filteredTransactions].sort(
     (a, b) => new Date(a.date_entree) - new Date(b.date_entree)
   );
@@ -47,139 +46,56 @@ const RiskAdjustedProjection = ({ filteredTransactions, capitalInitial }) => {
   let cumulativePnlPercentage = 0;
 
   sortedTransactions.forEach((transaction) => {
-    const { resultat_id, rrp, date_entree, risque, actif_id } = transaction;
+    const { resultat_id, rrp, date_entree, risque } = transaction;
     const rrpFloat = parseFloat(rrp) || 1;
-    let beneficePourcentage = 0;
     let beneficePourcentage2 = 0;
+    let beneficePourcentage2_5 = 0;
     let pnlPourcentage = 0;
-
-    // 🔹 Calcul des bénéfices
-    if (resultat_id === 2) {
-      beneficePourcentage = -risqueActuel * 100;
-      pnlPourcentage = -parseFloat(risque);
-    } else if (resultat_id === 1) {
-      beneficePourcentage = 0;
-      pnlPourcentage = 0;
-    } else if (resultat_id === 3 || resultat_id === 4) {
-      beneficePourcentage = risqueActuel * rrpFloat * 100;
-      pnlPourcentage = parseFloat(risque) * parseFloat(rrp);
-    }
-
-    // 🔹 Calcul des bénéfices
+  
+    // Appliquer la stratégie : -R, 0, ou R*rrp
     if (resultat_id === 2) {
       beneficePourcentage2 = -risqueActuel2 * 100;
+      beneficePourcentage2_5 = -risqueActuel2_5 * 100;
       pnlPourcentage = -parseFloat(risque);
     } else if (resultat_id === 1) {
       beneficePourcentage2 = 0;
+      beneficePourcentage2_5 = 0;
       pnlPourcentage = 0;
     } else if (resultat_id === 3 || resultat_id === 4) {
       beneficePourcentage2 = risqueActuel2 * rrpFloat * 100;
+      beneficePourcentage2_5 = risqueActuel2_5 * rrpFloat * 100;
       pnlPourcentage = parseFloat(risque) * parseFloat(rrp);
     }
-
-    // 🔹 Mise à jour du bénéfice total en %
-    beneficeTotalPourcentage += beneficePourcentage;
+  
     beneficeTotalPourcentage2 += beneficePourcentage2;
+    beneficeTotalPourcentage2_5 += beneficePourcentage2_5;
     cumulativePnlPercentage += pnlPourcentage;
-
-    if (beneficeTotalPourcentage2 >= 5) {
-      risqueActuel2 = 1 / 100;
-    } 
-    if (beneficeTotalPourcentage2 < 5) {
-      risqueActuel2 = 0.5 / 100;
-    }
-
-    // 🎯 **Gestion du risque dynamique pour actifs spécifiques**
-    const actifsAvecGestionSpéciale = [48, 49, 50, 51];
-
-    if (actifsAvecGestionSpéciale.includes(actif_id)) {
-      if (beneficeTotalPourcentage >= 9) {
-        risqueActuel = 4 / 100;
-      } else if (beneficeTotalPourcentage >= 7) {
-        risqueActuel = 2 / 100;
-      } else if (beneficeTotalPourcentage >= 3) {
-        risqueActuel = 1 / 100;
-      } else {
-        risqueActuel = 0.5 / 100;
-      }
-    } else {
-      // 🎯 **Gestion du risque classique pour les autres actifs**
-      if (beneficeTotalPourcentage >= 25) {
-        risqueActuel = 4 / 100;
-      } else if (beneficeTotalPourcentage >= 18) {
-        risqueActuel = 2 / 100;
-      } else if (beneficeTotalPourcentage >= 12) {
-        risqueActuel = 2 / 100;
-      } else if (beneficeTotalPourcentage >= 6) {
-        risqueActuel = 1 / 100;
-      } else {
-        risqueActuel = 0.5 / 100;
-      }
-    }
-
-    console.log(
-      `📊 Transaction du ${new Date(date_entree).toLocaleString("fr-FR")} - Actif ${actif_id} - Bénéfice: ${beneficeTotalPourcentage.toFixed(
-        2
-      )}% - Risque Ajusté: ${(risqueActuel * 100).toFixed(2)}%`
-    );
-
-    
-
-    // 📊 Stocker les données pour Risk Adjusted
-    historiqueBenefice.push({
-      date: new Date(date_entree).toLocaleString("fr-FR", {
-        day: "2-digit",
-        month: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      benefice: beneficeTotalPourcentage.toFixed(2),
+  
+    // Mise à jour des risques après seuils
+    risqueActuel2 = beneficeTotalPourcentage2 >= 3 ? (0.5 * 2) / 100 : 0.5 / 100;
+    risqueActuel2_5 = beneficeTotalPourcentage2_5 >= 5 ? (0.5 * 2.5) / 100 : 0.5 / 100;
+  
+    const label = new Date(date_entree).toLocaleString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
     });
-
-    // 📊 Stocker les données pour Risk Adjusted
-    historiqueBenefice2.push({
-      date: new Date(date_entree).toLocaleString("fr-FR", {
-        day: "2-digit",
-        month: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      benefice: beneficeTotalPourcentage2.toFixed(2),
-    });
-
-    // 📊 Stocker les données pour Filtered Transactions
-    filteredLineData.push({
-      date: new Date(date_entree).toLocaleString("fr-FR", {
-        day: "2-digit",
-        month: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      benefice: cumulativePnlPercentage.toFixed(2),
-    });
+  
+    historiqueBenefice2.push({ date: label, benefice: beneficeTotalPourcentage2.toFixed(2) });
+    historiqueBenefice2_5.push({ date: label, benefice: beneficeTotalPourcentage2_5.toFixed(2) });
+    filteredLineData.push({ date: label, benefice: cumulativePnlPercentage.toFixed(2) });
   });
+  
 
-  const lastBeneficeTotalPourcentage2 = beneficeTotalPourcentage2.toFixed(2);
-
-
-  // 🔹 Préparation des données pour le LineChart (SUPERPOSITION DES COURBES)
   const chartData = {
-    labels: historiqueBenefice.map((point) => point.date),
+    labels: historiqueBenefice2.map((point) => point.date),
     datasets: [
-      {
-        label: "Bénéfice (%) - Risk Adjusted",
-        data: historiqueBenefice.map((point) => point.benefice),
-        borderColor: "#ff5d8f",
-        backgroundColor: "rgba(255, 93, 143, 0.2)",
-        tension: 0.4,
-        borderWidth: 2,
-        pointRadius: 0,
-      },
       {
         label: "Bénéfice (%) - Risk Adjusted 2",
         data: historiqueBenefice2.map((point) => point.benefice),
-        borderColor: "#3a86ff",
-        backgroundColor: "#03045e",
+        borderColor: "#ef476f",
+        backgroundColor: "#ef476f",
         tension: 0.4,
         borderWidth: 2,
         pointRadius: 0,
@@ -193,10 +109,18 @@ const RiskAdjustedProjection = ({ filteredTransactions, capitalInitial }) => {
         borderWidth: 2,
         pointRadius: 0,
       },
+      {
+        label: "Bénéfice (%) - Risk Adjusted 2.5",
+        data: historiqueBenefice2_5.map((point) => point.benefice),
+        borderColor: "#ffd166",
+        backgroundColor: "#ffd166",
+        tension: 0.4,
+        borderWidth: 2,
+        pointRadius: 0,
+      },
     ],
   };
 
-  // 🔹 Options du graphique
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -204,10 +128,7 @@ const RiskAdjustedProjection = ({ filteredTransactions, capitalInitial }) => {
       legend: { display: true },
       tooltip: {
         callbacks: {
-          label: (context) =>
-            context.dataset.label === "Bénéfice (%) - Risk Adjusted"
-              ? `Bénéfice Ajusté : ${context.raw}%`
-              : `Bénéfice Filtered : ${context.raw}%`,
+          label: (context) => `Bénéfice: ${context.raw}%`,
         },
       },
     },
@@ -230,10 +151,11 @@ const RiskAdjustedProjection = ({ filteredTransactions, capitalInitial }) => {
     },
   };
 
-  const capitalFinal =
-    (beneficeTotalPourcentage / 100) * capitalInitial + capitalInitial;
-    const capitalFinal2 =
+  const capitalFinal2 =
     (beneficeTotalPourcentage2 / 100) * capitalInitial + capitalInitial;
+
+  const capitalFinal2_5 =
+    (beneficeTotalPourcentage2_5 / 100) * capitalInitial + capitalInitial;
 
   return (
     <div className="text-white w-auto flex space-x-2">
@@ -243,40 +165,30 @@ const RiskAdjustedProjection = ({ filteredTransactions, capitalInitial }) => {
         </h2>
 
         <div className="mt-4">
-          <p className="text-sm text-gray-400">Capital final :</p>
-          <p
-            className="text-lg font-bold text-pink-400"
-          >
-            {capitalFinal.toFixed(2)}$
-          </p>
-        </div>
-
-        <div className="mt-4">
-          <p className="text-sm text-gray-400">Bénéfice Total :</p>
-          <p
-            className="text-lg font-bold text-pink-400"
-          >
-            {beneficeTotalPourcentage.toFixed(2)}%
-          </p>
-        </div>
-
-        <div className="mt-4">
           <p className="text-sm text-gray-400">Capital final II :</p>
-          <p
-            className="text-lg font-bold text-blue-500"
-          >
+          <p className="text-lg font-bold text-pink-600">
             {capitalFinal2.toFixed(2)}$
           </p>
         </div>
 
-
-
         <div className="mt-4">
           <p className="text-sm text-gray-400">Bénéfice Total II :</p>
-          <p
-            className="text-lg font-bold text-blue-500"
-          >
+          <p className="text-lg font-bold text-pink-600">
             {beneficeTotalPourcentage2.toFixed(2)}%
+          </p>
+        </div>
+
+        <div className="mt-4">
+          <p className="text-sm text-gray-400">Capital final III (x2.5) :</p>
+          <p className="text-lg font-bold text-yellow-500">
+            {capitalFinal2_5.toFixed(2)}$
+          </p>
+        </div>
+
+        <div className="mt-4">
+          <p className="text-sm text-gray-400">Bénéfice Total III (x2.5) :</p>
+          <p className="text-lg font-bold text-yellow-500">
+            {beneficeTotalPourcentage2_5.toFixed(2)}%
           </p>
         </div>
       </div>
