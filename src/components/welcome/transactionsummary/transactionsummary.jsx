@@ -11,6 +11,7 @@ import TryToTakeRiskAsYoungIAm from "./TryToTakeRiskAsYoungIAm";
 import QuarterlyPNL from "./TryToTakeRiskAsYoungIAm";
 import TradeFrequencyStats from "./newfile";
 import IndiceFiabilite from "./IndiceFiabilité";
+import ClassementActifsParPNL from "./newfile";
 
 const TransactionSummary = () => {
   const [selectedTimeframes, setSelectedTimeframes] = useState([]);
@@ -377,7 +378,7 @@ const TransactionSummary = () => {
         <>
           {/* Indicateurs et graphiques */}
           <div className="bg-gray-800 text-white rounded-xl flex space-x-4">
-            <div className="bg-gray-900 text-white rounded-xl mt-4 w-1/4">
+            <div className="bg-gray-900 text-white rounded-xl mt-4 w-3/12">
               <h4 className="text-xl font-bold p-4">
                 📊 Répartition des résultats
               </h4>
@@ -385,7 +386,7 @@ const TransactionSummary = () => {
                 transactionSummaryFilteredTransactions={filteredTransactionsForMetrics}
               />
             </div>
-            <div className="bg-gray-900 text-white rounded-xl mt-4 w-3/4">
+            <div className="bg-gray-900 text-white rounded-xl mt-4 w-7/12">
               <h4 className="text-xl font-bold mb-4 p-4">
                 📊 Nombre de Transactions par actif
               </h4>
@@ -393,6 +394,14 @@ const TransactionSummary = () => {
                 transactionSummaryFilteredTransactions={filteredTransactionsForMetrics}
               />
             </div>
+            <div className="bg-gray-900 text-white rounded-xl mt-4 w-2/12">
+              <h4 className="text-xl font-bold mb-4 p-4">
+                Classement des PNL
+              </h4>
+              <ClassementActifsParPNL  transactionSummaryFilteredTransactions={filteredTransactionsForMetrics}
+/>
+            </div>
+            
           </div>
 
           <div className="flex mb-4 mt-4 h-auto space-x-4">

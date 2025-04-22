@@ -37,11 +37,13 @@ const AddTransaction = ({
   const [refreshComments, setRefreshComments] = useState(false);
   const [benefice, setBenefice] = useState(0); // ✅ Stocker le bénéfice calculé
   const [beneficeData, setBeneficeData] = useState([]);
+  const [showDateSortie, setShowDateSortie] = useState(false);
 
   const [transactions, setTransactions] = useState([
     {
       resultat_id: "",
       date_entree: "",
+      date_sortie: "", // ✅ Nouveau champ
       rrp: "",
     },
   ]);
@@ -353,6 +355,7 @@ const AddTransaction = ({
       {
         resultat_id: "",
         date_entree: "",
+        date_sortie: "", // 👈 ajoute cette ligne ici
         rrp: "",
       },
     ]);
@@ -391,6 +394,15 @@ const AddTransaction = ({
       if (!transaction.resultat_id) missingFields.push("resultat_id");
       if (!transaction.date_entree) missingFields.push("date_entree");
       if (!transaction.rrp) missingFields.push("rrp");
+      if (
+        transaction.date_sortie &&
+        new Date(transaction.date_sortie) <= new Date(transaction.date_entree)
+      ) {
+        console.warn(
+          `❌ La date de sortie de la transaction ${index + 1} doit être postérieure à la date d'entrée.`
+        );
+        return false;
+      }
 
       if (missingFields.length > 0) {
         console.warn(
@@ -406,6 +418,7 @@ const AddTransaction = ({
   const handleSubmit = async () => {
     console.log("🚀 Début de handleSubmit");
 
+    // ✅ Validation du formulaire
     if (!isFormValid()) {
       console.warn("❌ Le formulaire n'est pas valide !");
       showAlert(
@@ -420,10 +433,11 @@ const AddTransaction = ({
       setIsBlurred(true);
       setIsRefreshingTable(false);
 
-      const token = localStorage.getItem("token"); // 🔥 Vérifier le token
+      const token = localStorage.getItem("token");
       const user_id = localStorage.getItem("user_id");
       const session_backtest_id = sessionBacktestId;
 
+      // 🔒 Sécurité : vérifie que tout est défini
       if (!token || !user_id || !session_backtest_id) {
         console.error("❌ Utilisateur ou session non définis !");
         showAlert("Utilisateur ou session non définis !", "error");
@@ -433,15 +447,23 @@ const AddTransaction = ({
 
       const actifIdToAdjust = [48, 49, 50, 51];
 
+      // 📦 Préparer les requêtes pour chaque transaction
       const requests = transactions.map((transaction) => {
         const adjustedRRP = actifIdToAdjust.includes(commonFields.actif_id)
           ? parseFloat(transaction.rrp) * 0.7
           : transaction.rrp;
 
-        const formattedDate = new Date(transaction.date_entree)
+        const formattedDateEntree = new Date(transaction.date_entree)
           .toISOString()
           .slice(0, 19)
-          .replace("T", " "); // ✅ Date format MySQL
+          .replace("T", " ");
+
+        const formattedDateSortie = transaction.date_sortie
+          ? new Date(transaction.date_sortie)
+              .toISOString()
+              .slice(0, 19)
+              .replace("T", " ")
+          : null;
 
         const transactionData = {
           user_id,
@@ -450,8 +472,9 @@ const AddTransaction = ({
           strategie_id: commonFields.strategie_id,
           timeframe_id: commonFields.timeframe_id,
           risque: commonFields.risque,
-          ...transaction,
-          date_entree: formattedDate,
+          resultat_id: transaction.resultat_id,
+          date_entree: formattedDateEntree,
+          date_sortie: formattedDateSortie,
           rrp: adjustedRRP,
           status: "clôturé",
         };
@@ -463,24 +486,28 @@ const AddTransaction = ({
           transactionData,
           {
             headers: {
-              Authorization: `Bearer ${token}`, // ✅ Ajout du token
+              Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
             },
           }
         );
       });
 
+      // 🚀 Envoie toutes les transactions en parallèle
       await Promise.all(requests);
 
+      // ✅ Succès
       showAlert(
         "Toutes les transactions ont été ajoutées avec succès !",
         "success"
       );
 
+      // ♻️ Réinitialise les valeurs du formulaire
       setTransactions([
         {
           resultat_id: "",
           date_entree: "",
+          date_sortie: "",
           rrp: "",
         },
       ]);
@@ -492,6 +519,7 @@ const AddTransaction = ({
         timeframe_id: prev.timeframe_id || "",
       }));
 
+      // ⏳ Rafraîchir la table après un court délai
       setTimeout(() => {
         setIsRefreshingTable(true);
       }, 2000);
@@ -599,7 +627,7 @@ const AddTransaction = ({
         <div className="w-full px-2 py-4  bg-white dark:bg-gray-900 rounded-lg shadow-lg text-gray-900 dark:text-white">
           <div className="text-lg mb-4">Ajouter transaction</div>
 
-          <div className="mb-4 rounded-lg bg-gray-50 dark:bg-gray-800 ">
+          <div className="py-2 rounded-lg bg-gray-50 dark:bg-gray-800 mb-4">
             <div className=" flex space-x-2 p-2">
               <div className="flex flex-col w-1/2">
                 <label className="text-xs mb-1 font-extralight text-gray-700 dark:text-gray-300">
@@ -682,6 +710,22 @@ const AddTransaction = ({
                 </select>
               </div>
             </div>
+
+            <div className=" flex space-x-6 w-full px-2 mb-4">
+              <label className="text-xs text-gray-700 dark:text-gray-300 font-light">
+                Afficher champ "date sortie"
+              </label>
+              <button
+                className={`px-2 py-1 text-xs rounded flex items-end ${
+                  showDateSortie
+                    ? "bg-green-500 text-white"
+                    : "bg-gray-300 text-gray-700"
+                }`}
+                onClick={() => setShowDateSortie((prev) => !prev)}
+              >
+                {showDateSortie ? "Désactiver" : "Activer"}
+              </button>
+            </div>
           </div>
 
           <div className="space-y-4 text-xs font-extralight">
@@ -726,6 +770,22 @@ const AddTransaction = ({
                       />
                     </div>
                   </div>
+
+                  {showDateSortie && (
+                    <div className="w-full mb-4">
+                      <label className="block text-xs mb-2 font-extralight text-gray-700 dark:text-gray-300">
+                        Date Sortie
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={transaction.date_sortie}
+                        onChange={(e) =>
+                          handleChange(index, "date_sortie", e.target.value)
+                        }
+                        className="text-xs py-1 w-full px-1 border rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                      />
+                    </div>
+                  )}
 
                   {/* Étage 2 */}
                   <div className="w-full flex space-x-2">

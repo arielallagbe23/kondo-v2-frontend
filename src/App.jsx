@@ -11,9 +11,12 @@ import Overwatch from "./components/welcome/overwatch/overwatch";
 import JournalTrading from "./components/welcome/journaltrading/JournalTrading";
 import TransactionSummary from "./components/welcome/transactionsummary/transactionsummary";
 import LandingPage from "./components/Acceuil/LandingPage";
+import Inscription from "./components/auth/Inscription";
 
 function App() {
   const [isNavbarOpen, setIsNavbarOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false); // 👈 nouveau
+
 
   return (
     <Router>
@@ -33,7 +36,10 @@ function App() {
         >
           <Routes>
             <Route path="/" element={<WelcomePage />} />
+            <Route path="/landing" element={<LandingPage />} />
             <Route path="/connexion" element={<Connexion />} />
+            <Route path="/inscription" element={<Inscription />} />
+
             <Route path="/home" element={<Home />} />
             <Route path="/session" element={<BackTestingSession /> } />
             <Route path="/welcomeHome" element={<WelcomePage />} />

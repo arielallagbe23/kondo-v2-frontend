@@ -60,7 +60,7 @@ const TransactionSummaryRiskAdjusted = ({ transactionSummaryFilteredTransactions
     pnlCurves[0].push({ x: isoDate, y: cumulativePnls[0] });
 
     // Risque *2 sur H4/D1 sinon normal
-    const riskMultiplier = timeframe_id === 5 || timeframe_id === 6 ? 2 : 1;
+    const riskMultiplier = timeframe_id === 5 || timeframe_id === 6 || timeframe_id === 4 ? 2 : 1;
     let adjustedPnl = 0;
     if (resultat_id === 2) adjustedPnl = -risque * riskMultiplier;
     else if (resultat_id === 3 || resultat_id === 4) adjustedPnl = risque * rrp * riskMultiplier;

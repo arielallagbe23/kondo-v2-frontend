@@ -1,50 +1,54 @@
-import React from "react";
+import React, { useMemo } from "react";
 
-const TradeFrequencyStats = ({ transactionSummaryFilteredTransactions }) => {
-  const tradesByDay = {};
-  const tradesByWeek = {};
+const ClassementActifsParPNL = ({ transactionSummaryFilteredTransactions = [] }) => {
+  const classement = useMemo(() => {
+    const stats = {};
 
-  transactionSummaryFilteredTransactions.forEach((tx) => {
-    if (!tx.date_entree) return;
+    transactionSummaryFilteredTransactions.forEach((tx) => {
+      const nomActif = tx.nom_actif;
+      const rrp = parseFloat(tx.rrp) || 0;
+      const risque = parseFloat(tx.risque) || 0;
+      const resultat = tx.resultat;
 
-    const date = new Date(tx.date_entree);
-    const dayKey = date.toLocaleDateString("fr-FR");
+      if (!stats[nomActif]) stats[nomActif] = 0;
 
-    const weekKey = `${date.getFullYear()}-W${Math.ceil(date.getDate() / 7)}`;
+      if (resultat === "TP" || resultat === "SL->TP") {
+        stats[nomActif] += risque * 2 * rrp;
+      } else if (resultat === "SL") {
+        stats[nomActif] -= risque * 2;
+      }
+      // BE = 0 → rien à faire
+    });
 
-    tradesByDay[dayKey] = (tradesByDay[dayKey] || 0) + 1;
-    tradesByWeek[weekKey] = (tradesByWeek[weekKey] || 0) + 1;
-  });
-
-  const tradesPerDay = Object.values(tradesByDay);
-  const tradesPerWeek = Object.values(tradesByWeek);
-
-  const average = (arr) => arr.reduce((acc, val) => acc + val, 0) / arr.length || 0;
-  const max = (arr) => Math.max(...arr);
-  const min = (arr) => Math.min(...arr);
+    return Object.entries(stats)
+      .map(([nom, pnl]) => ({
+        nom,
+        pnl: parseFloat(pnl.toFixed(2)),
+      }))
+      .sort((a, b) => b.pnl - a.pnl);
+  }, [transactionSummaryFilteredTransactions]);
 
   return (
-    <div className="bg-white dark:bg-gray-900 w-full p-4 rounded-xl">
-      <h2 className="text-lg font-bold mb-4">Fréquence des Trades</h2>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-        <div>
-          <div className="font-bold mb-1">Par Semaine</div>
-          <div>Moyenne : {average(tradesPerWeek).toFixed(2)} trades</div>
-          <div>Max : {max(tradesPerWeek)} trades</div>
-          <div>Min : {min(tradesPerWeek)} trades</div>
-        </div>
-
-        <div>
-          <div className="font-bold mb-1">Par Jour</div>
-          <div>Moyenne : {average(tradesPerDay).toFixed(2)} trades</div>
-          <div>Max : {max(tradesPerDay)} trades</div>
-          <div>Min : {min(tradesPerDay)} trades</div>
-        </div>
-      </div>
+    <div className="bg-white dark:bg-gray-900 w-full rounded-lg p-4 space-y-2@">
+      <ul className="space-y-2">
+        {classement.map((actif, index) => (
+          <li
+            key={actif.nom}
+            className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-1"
+          >
+            <span className="font-medium">{index + 1}. {actif.nom}</span>
+            <span
+              className={`font-bold ${
+                actif.pnl >= 0 ? "text-green-600" : "text-red-500"
+              }`}
+            >
+              {actif.pnl} %
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 };
 
-export default TradeFrequencyStats;
- 
+export default ClassementActifsParPNL;
